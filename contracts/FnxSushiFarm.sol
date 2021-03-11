@@ -550,9 +550,9 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
         emit QuitExtReward(extFarmAddr,address(sushiToken),_to, quitBalance);
     }
 
-    function _become(UniFarm uniFarm) public {
+    function _become(address uniFarm) public {
         require(msg.sender == uniFarm.admin(), "only uniFarm admin can change brains");
-        require(uniFarm._acceptImplementation() == 0, "change not authorized");
+        require(UniFarm(uniFarm)._acceptImplementation() == 0, "change not authorized");
     }
 
 }

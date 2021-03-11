@@ -1,5 +1,5 @@
 var PrivateKeyProvider = require('truffle-privatekey-provider');
-var HDWalletProvider = require('truffle-hdwallet-provider');
+//var HDWalletProvider = require('truffle-hdwallet-provider');
 
 module.exports = {
     //migrations_directory: "migrations_empty",
