@@ -102,7 +102,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
 
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    function add(IERC20 _lpToken,
+    function add(address _lpToken,
                  uint256 _bonusStartBlock,
                  uint256 _bonusEndBlock,
                  uint256 _fnxPerBlock
@@ -123,7 +123,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
 
 
         poolInfo.push(PoolInfo({
-            lpToken: _lpToken,
+            lpToken: IERC20(_lpToken),
             currentSupply: 0,
             bonusStartBlock: _bonusStartBlock,
             newStartBlock: _bonusStartBlock,
@@ -550,8 +550,8 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
         emit QuitExtReward(extFarmAddr,address(sushiToken),_to, quitBalance);
     }
 
-    function _become(address uniFarm) public {
-        require(msg.sender == uniFarm.admin(), "only uniFarm admin can change brains");
+    function _become(address payable uniFarm) public {
+        require(msg.sender == UniFarm(uniFarm).admin(), "only uniFarm admin can change brains");
         require(UniFarm(uniFarm)._acceptImplementation() == 0, "change not authorized");
     }
 
