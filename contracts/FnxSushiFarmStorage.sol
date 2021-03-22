@@ -2,6 +2,8 @@ pragma solidity 0.5.16;
 pragma experimental ABIEncoderV2;
 
 import { IERC20 } from "./openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./Halt.sol";
+import "./ReentrancyGuard.sol";
 
 contract FnxSushiFarmErrorReporter {
     enum Error {
@@ -42,7 +44,7 @@ contract FnxSushiFarmErrorReporter {
 }
 
 
-contract UniFarmAdminStorage {
+contract UniFarmAdminStorage is Halt,ReentrancyGuard {
     /**
     * @notice Administrator for this contract
     */

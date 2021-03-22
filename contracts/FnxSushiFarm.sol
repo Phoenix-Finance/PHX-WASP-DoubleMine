@@ -27,7 +27,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IERC20 public constant fnxToken = IERC20(0xeF9Cd7882c067686691B6fF49e650b43AFBBCC6B);
+    IERC20 public fnxToken = IERC20(0xeF9Cd7882c067686691B6fF49e650b43AFBBCC6B);
 
     event QuitFnx(address to, uint256 amount);
     event QuitExtReward(address extFarmAddr, address rewardToken, address to, uint256 amount);
@@ -227,6 +227,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
 
         rate = multiplier.mul(sushiPerBlock).mul(allocPoint).mul(1e12).div(totalAllocPoint).div(totalSupply);
     }
+
     function extRewardPerBlock(uint256 _pid) public view returns(uint256){
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
@@ -255,12 +256,12 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
     function enableDoubleFarming(uint256 _pid, bool enable)public onlyOwner{
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
-        require(pool.extFarmInfo.extFarmAddr != address(0x0),"pool not supports double farming yet");
 
+        require(pool.extFarmInfo.extFarmAddr != address(0x0),"pool not supports double farming yet");
         if(pool.extFarmInfo.extEnableDeposit != enable){
 
             uint256 oldSuShiRewarad = IERC20(ISushiChef(pool.extFarmInfo.extFarmAddr).sushi()).balanceOf(address(this));
-            
+
             if(enable){
                 pool.lpToken.approve(pool.extFarmInfo.extFarmAddr,0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
                 if(pool.currentSupply > 0) {
@@ -268,7 +269,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
                 }
 
                 pool.extFarmInfo.extEnableClaim = true;
-                
+
             }else{
                 pool.lpToken.approve(pool.extFarmInfo.extFarmAddr,0);
                 (uint256 amount,) = ISushiChef(pool.extFarmInfo.extFarmAddr).userInfo(pool.extFarmInfo.extPid,address(this));
@@ -282,11 +283,12 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
 
                 pool.extFarmInfo.extRewardPerShare = deltaSuShiReward.mul(1e12).div(pool.currentSupply).add(pool.extFarmInfo.extRewardPerShare);
             }
-        
+
             pool.extFarmInfo.extEnableDeposit = enable;
 
             emit DoubleFarmingEnable(_pid,enable);
         }
+
     }
 
     function setDoubleFarming(uint256 _pid,address extFarmAddr,uint256 _extPid) public onlyOwner{
@@ -306,7 +308,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
         pool.extFarmInfo.extPid = _extPid;
 
         emit SetExtFarm(_pid, extFarmAddr, _extPid);
-        
+
     }
 
     function disableExtEnableClaim(uint256 _pid)public onlyOwner{
@@ -438,7 +440,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
     }
 
     // Deposit LP tokens to MasterChef for Fnx allocation.
-    function deposit(uint256 _pid, uint256 _amount) public  {
+    function deposit(uint256 _pid, uint256 _amount) public  notHalted nonReentrant {
         require(_pid < poolInfo.length, "pid >= poolInfo.length");
 
         PoolInfo storage pool = poolInfo[_pid];
@@ -469,18 +471,21 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
     }
 
     // Withdraw LP tokens from MasterChef.
-    function withdraw(uint256 _pid, uint256 _amount) public  {
+    function withdraw(uint256 _pid, uint256 _amount) public notHalted nonReentrant {
         require(_pid < poolInfo.length, "pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
 
         withDrawLPFromSuShi(_pid,_amount);
+
         updatePool(_pid);
+
         uint256 pending = user.amount.mul(pool.accFnxPerShare).div(1e12).sub(user.rewardDebt);
         if(pending > 0) {
             fnxToken.transfer(msg.sender, pending);
         }
+
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
             pool.currentSupply = pool.currentSupply.sub(_amount);
@@ -490,11 +495,11 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
         pool.totalDebtReward = pool.totalDebtReward.sub(user.rewardDebt);
         user.rewardDebt = user.amount.mul(pool.accFnxPerShare).div(1e12);
         pool.totalDebtReward = pool.totalDebtReward.add(user.rewardDebt);
+
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
-
-    function emergencyWithdraw(uint256 _pid) public onlyOwner  {
+    function emergencyWithdraw(uint256 _pid) public onlyOwner {
         require(_pid < poolInfo.length, "pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
 
@@ -553,6 +558,10 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
     function _become(address payable uniFarm) public {
         require(msg.sender == UniFarm(uniFarm).admin(), "only uniFarm admin can change brains");
         require(UniFarm(uniFarm)._acceptImplementation() == 0, "change not authorized");
+    }
+
+    function setRewardToken(address _tokenAddr) public onlyOwner {
+        fnxToken = IERC20(_tokenAddr);
     }
 
 }
