@@ -134,7 +134,6 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
             totalDebtReward: 0,
             extFarmInfo:extFarmInfo
         }));
-        
     }
 
     function updatePoolInfo(uint256 _pid, uint256 _bonusEndBlock, uint256 _fnxPerBlock) public onlyOwner {
@@ -499,6 +498,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
+
     function emergencyWithdraw(uint256 _pid) public onlyOwner {
         require(_pid < poolInfo.length, "pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
@@ -564,4 +564,11 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
         fnxToken = IERC20(_tokenAddr);
     }
 
-}
+    function totalStaked(uint256 _pid) public view returns (uint256){
+        require(_pid < poolInfo.length,"pid >= poolInfo.length");
+
+        PoolInfo storage pool = poolInfo[_pid];
+        return pool.currentSupply;
+    }
+
+ }
