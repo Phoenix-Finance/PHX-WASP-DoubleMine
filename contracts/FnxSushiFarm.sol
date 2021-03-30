@@ -145,7 +145,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
         poolMineInfo[poolInfo.length-1] = pmi;
     }
 
-    function updatePoolInfo(uint256 _pid, uint256 _bonusEndBlock, uint256 _fnxPerBlock) public onlyOwner {
+    function updatePoolInfo(uint256 _pid, uint256 _bonusEndBlock, uint256 _fnxPerBlock,uint256 _totalMineFnx,uint256 _duration) public onlyOwner {
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         require(_bonusEndBlock > block.number, "_bonusEndBlock <= block.number");
         updatePool(_pid);
@@ -156,6 +156,10 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
 
         pool.bonusEndBlock = _bonusEndBlock;
         pool.fnxPerBlock = _fnxPerBlock;
+        //keep it to later show
+        poolMineInfo[_pid].totalMineFnx=_totalMineFnx;
+        poolMineInfo[_pid].duration=_duration;
+
         emit UpdatePoolInfo(_pid, _bonusEndBlock, _fnxPerBlock);
     }
 
