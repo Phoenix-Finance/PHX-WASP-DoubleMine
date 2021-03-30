@@ -105,7 +105,9 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
     function add(address _lpToken,
                  uint256 _bonusStartBlock,
                  uint256 _bonusEndBlock,
-                 uint256 _fnxPerBlock
+                 uint256 _fnxPerBlock,
+                 uint256 _totalMineFnx,
+                 uint256 _duration
                  ) public onlyOwner {
         require(block.number < _bonusEndBlock, "block.number >= bonusEndBlock");
         require(_bonusStartBlock < _bonusEndBlock, "_bonusStartBlock >= _bonusEndBlock");
@@ -134,6 +136,13 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
             totalDebtReward: 0,
             extFarmInfo:extFarmInfo
         }));
+
+        PoolMineInfo memory pmi = PoolMineInfo({
+            totalMineFnx:_totalMineFnx,
+            duration:_duration
+        });
+
+        poolMineInfo[poolInfo.length-1] = pmi;
     }
 
     function updatePoolInfo(uint256 _pid, uint256 _bonusEndBlock, uint256 _fnxPerBlock) public onlyOwner {
@@ -569,6 +578,11 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
 
         PoolInfo storage pool = poolInfo[_pid];
         return pool.currentSupply;
+    }
+
+
+    function getMineInfo(uint256 _pid) public view returns (uint256,uint256,uint256,uint256) {
+        return (poolMineInfo[_pid].totalMineFnx,poolMineInfo[_pid].duration,poolInfo[_pid].bonusStartBlock,poolInfo[_pid].bonusEndBlock);
     }
 
  }

@@ -102,4 +102,12 @@ contract FnxSushiFarmV1Storage is UniFarmAdminStorage {
     PoolInfo[] public poolInfo;   // Info of each pool.
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;// Info of each user that stakes LP tokens.
 
+    struct PoolMineInfo {
+        uint256 totalMineFnx;
+        uint256 duration;
+    }
+
+    mapping (uint256=>PoolMineInfo) poolMineInfo;
+
+
 }
