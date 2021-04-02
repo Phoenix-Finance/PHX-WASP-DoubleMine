@@ -27,7 +27,7 @@ OpenZeppelin Contracts features a [stable API](https://docs.openzeppelin.com/con
 Once installed, you can use the contracts in the library by importing them:
 
 ```solidity
-pragma solidity ^0.5.0;
+pragma solidity 0.5.16;
 
 import "./token/ERC721/ERC721Full.sol";
 import "./token/ERC721/ERC721Mintable.sol";
