@@ -1,5 +1,5 @@
 pragma solidity 0.5.16;
-pragma experimental ABIEncoderV2;
+//pragma experimental ABIEncoderV2;
 
 import "./openzeppelin/contracts/ownership/Ownable.sol";
 import "./openzeppelin/contracts/math/SafeMath.sol";
@@ -7,7 +7,7 @@ import "./openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./FnxSushiFarmStorage.sol";
 import "./FnxSushiFarmInterface.sol";
-import "./UniFarm.sol";
+//import "./UniFarm.sol";
 
 interface ISushiChef {
     function deposit(uint256 _pid, uint256 _amount) external;
@@ -38,13 +38,12 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
     event EmergencyWithdraw(uint256 indexed pid);
 
 
-    constructor() public {
-        admin = msg.sender;
+    function initialize() onlyOwner public {
+
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == admin, "Ownable: caller is not the owner");
-        _;
+    function update() onlyOwner public {
+
     }
 
     function _poolInfo(uint256 _pid) external view returns (
@@ -566,11 +565,6 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
 
         sushiToken.safeTransfer(_to, quitBalance);
         emit QuitExtReward(extFarmAddr,address(sushiToken),_to, quitBalance);
-    }
-
-    function _become(address payable uniFarm) public {
-        require(msg.sender == UniFarm(uniFarm).admin(), "only uniFarm admin can change brains");
-        require(UniFarm(uniFarm)._acceptImplementation() == 0, "change not authorized");
     }
 
     function setRewardToken(address _tokenAddr) public onlyOwner {
