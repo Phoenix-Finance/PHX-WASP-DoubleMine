@@ -1,5 +1,5 @@
 pragma solidity 0.5.16;
-pragma experimental ABIEncoderV2;
+//pragma experimental ABIEncoderV2;
 
 import "./openzeppelin/contracts/ownership/Ownable.sol";
 import "./openzeppelin/contracts/math/SafeMath.sol";
@@ -23,7 +23,7 @@ interface ISushiChef {
     function withdraw(uint256 _pid, uint256 _amount) external;
 }
 
-contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
+contract FnxSushiFarm is FnxSushiFarmV1Storage {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -36,6 +36,10 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
     event DoubleFarmingEnable(uint256 pid, bool flag);
     event SetExtFarm(uint256 pid, address extFarmAddr, uint256 extPid );
     event EmergencyWithdraw(uint256 indexed pid);
+
+    event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
+    event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
+    event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
 
     function initialize() onlyOwner public {

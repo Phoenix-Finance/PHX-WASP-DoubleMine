@@ -2,7 +2,8 @@ pragma solidity 0.5.16;
 import { IERC20 } from "./openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./Halt.sol";
 import "./ReentrancyGuard.sol";
-pragma experimental ABIEncoderV2;
+
+//pragma experimental ABIEncoderV2;
 contract FnxSushiFarmErrorReporter {
     enum Error {
         NO_ERROR,
@@ -77,7 +78,7 @@ contract FnxSushiFarmV1Storage is Halt, ReentrancyGuard{
         uint256 duration;
     }
 
-    PoolInfo[] public poolInfo;   // Info of each pool.
+    PoolInfo[] poolInfo;   // Info of each pool.
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;// Info of each user that stakes LP tokens.
     mapping (uint256=>PoolMineInfo) public poolmineinfo;
 }

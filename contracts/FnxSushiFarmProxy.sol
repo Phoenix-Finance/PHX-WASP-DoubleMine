@@ -1,12 +1,12 @@
-pragma solidity =0.5.16;
+pragma solidity 0.5.16;
 import "./baseProxy.sol";
 import "./FnxSushiFarmStorage.sol";
-pragma experimental ABIEncoderV2;
+//pragma experimental ABIEncoderV2;
 /**
  * @title  Erc20Delegator Contract
 
  */
-contract FnxSushiFarmProxy is FnxSushiFarmV1Storage,FnxSushiFarmErrorReporter,baseProxy{
+contract FnxSushiFarmProxy is FnxSushiFarmV1Storage,baseProxy{
 
     constructor(address _implementation) baseProxy(_implementation) public {
 
