@@ -2,7 +2,7 @@ pragma solidity 0.5.16;
 import { IERC20 } from "./openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./Halt.sol";
 import "./ReentrancyGuard.sol";
-
+pragma experimental ABIEncoderV2;
 contract FnxSushiFarmErrorReporter {
     enum Error {
         NO_ERROR,
@@ -60,17 +60,15 @@ contract FnxSushiFarmV1Storage is Halt, ReentrancyGuard{
 
     // Info of each pool.
     struct PoolInfo {
-        IERC20  lpToken;          // Address of LP token contract.
-        uint256 currentSupply;    //
-        uint256 bonusStartBlock;  //
-        uint256 newStartBlock;    //
-        uint256 bonusEndBlock;    // Block number when bonus fnx period ends.
-
-        uint256 lastRewardBlock;  // Last block number that fnxs distribution occurs.
-        uint256 accFnxPerShare;// Accumulated Fnx per share, times 1e12. See below.
-        uint256 fnxPerBlock;   // fnx tokens created per block.
-        uint256 totalDebtReward;  //
-
+        IERC20  lpToken;          // Address of LP token contract. 0
+        uint256 currentSupply;    //1
+        uint256 bonusStartBlock;  //2
+        uint256 newStartBlock;    //3
+        uint256 bonusEndBlock;    // Block number when bonus fnx period ends.4
+        uint256 lastRewardBlock;  // Last block number that fnxs distribution occurs.5
+        uint256 accFnxPerShare;// Accumulated Fnx per share, times 1e12. See below.6
+        uint256 fnxPerBlock;   // fnx tokens created per block.7
+        uint256 totalDebtReward;  //8
         ExtFarmInfo extFarmInfo;
     }
 
@@ -79,7 +77,7 @@ contract FnxSushiFarmV1Storage is Halt, ReentrancyGuard{
         uint256 duration;
     }
 
-    PoolInfo[] poolInfo;   // Info of each pool.
+    PoolInfo[] public poolInfo;   // Info of each pool.
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;// Info of each user that stakes LP tokens.
-    mapping (uint256=>PoolMineInfo) poolMineInfo;
+    mapping (uint256=>PoolMineInfo) public poolmineinfo;
 }

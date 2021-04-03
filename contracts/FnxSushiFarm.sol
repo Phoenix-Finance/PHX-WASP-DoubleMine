@@ -1,5 +1,5 @@
 pragma solidity 0.5.16;
-//pragma experimental ABIEncoderV2;
+pragma experimental ABIEncoderV2;
 
 import "./openzeppelin/contracts/ownership/Ownable.sol";
 import "./openzeppelin/contracts/math/SafeMath.sol";
@@ -43,7 +43,6 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
     }
 
     function update() onlyOwner public {
-
     }
 
     function _poolInfo(uint256 _pid) external view returns (
@@ -67,7 +66,6 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
                 pool.bonusStartBlock,
                 pool.newStartBlock,
                 pool.bonusEndBlock,
-
                 pool.lastRewardBlock,
                 pool.accFnxPerShare,
                 pool.fnxPerBlock,
@@ -107,7 +105,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
                  uint256 _fnxPerBlock,
                  uint256 _totalMineFnx,
                  uint256 _duration
-                 ) public onlyOwner {
+             ) public onlyOwner {
         require(block.number < _bonusEndBlock, "block.number >= bonusEndBlock");
         require(_bonusStartBlock < _bonusEndBlock, "_bonusStartBlock >= _bonusEndBlock");
         require(address(_lpToken) != address(0), "_lpToken == 0");
@@ -141,7 +139,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
             duration:_duration
         });
 
-        poolMineInfo[poolInfo.length-1] = pmi;
+        poolmineinfo[poolInfo.length-1] = pmi;
     }
 
     function updatePoolInfo(uint256 _pid, uint256 _bonusEndBlock, uint256 _fnxPerBlock,uint256 _totalMineFnx,uint256 _duration) public onlyOwner {
@@ -156,8 +154,8 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
         pool.bonusEndBlock = _bonusEndBlock;
         pool.fnxPerBlock = _fnxPerBlock;
         //keep it to later show
-        poolMineInfo[_pid].totalMineFnx=_totalMineFnx;
-        poolMineInfo[_pid].duration=_duration;
+        poolmineinfo[_pid].totalMineFnx=_totalMineFnx;
+        poolmineinfo[_pid].duration=_duration;
 
         emit UpdatePoolInfo(_pid, _bonusEndBlock, _fnxPerBlock);
     }
@@ -191,6 +189,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
             uint256 fnxReward = multiplier.mul(pool.fnxPerBlock);
             accFnxPerShare = accFnxPerShare.add(fnxReward.mul(1e12).div(pool.currentSupply));
         }
+
         return (user.amount, user.amount.mul(accFnxPerShare).div(1e12).sub(user.rewardDebt));
     }
 
@@ -455,8 +454,6 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
         require(_pid < poolInfo.length, "pid >= poolInfo.length");
 
         PoolInfo storage pool = poolInfo[_pid];
-        updatePool(_pid);
-
         UserInfo storage user = userInfo[_pid][msg.sender];
         if (user.amount > 0) {
             uint256 pending = user.amount.mul(pool.accFnxPerShare).div(1e12).sub(user.rewardDebt);
@@ -470,7 +467,10 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
             user.amount = user.amount.add(_amount);
             pool.currentSupply = pool.currentSupply.add(_amount);
         }
-        
+
+        //move to here
+        updatePool(_pid);
+
         // must excute after lpToken has beem transfered from user to this contract and the amount of user depoisted is updated.
         depositLPToSuShiChef(_pid,_amount); 
             
@@ -578,9 +578,9 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage, FnxSushiFarmInterface{
         return pool.currentSupply;
     }
 
-
     function getMineInfo(uint256 _pid) public view returns (uint256,uint256,uint256,uint256) {
-        return (poolMineInfo[_pid].totalMineFnx,poolMineInfo[_pid].duration,poolInfo[_pid].bonusStartBlock,poolInfo[_pid].bonusEndBlock);
+        return (poolmineinfo[_pid].totalMineFnx,poolmineinfo[_pid].duration,
+                poolInfo[_pid].bonusStartBlock,poolInfo[_pid].fnxPerBlock);
     }
 
  }

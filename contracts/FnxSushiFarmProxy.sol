@@ -1,11 +1,12 @@
 pragma solidity =0.5.16;
 import "./baseProxy.sol";
 import "./FnxSushiFarmStorage.sol";
+pragma experimental ABIEncoderV2;
 /**
  * @title  Erc20Delegator Contract
 
  */
-contract FnxSushiFarmProxy is FnxSushiFarmErrorReporter,baseProxy{
+contract FnxSushiFarmProxy is FnxSushiFarmV1Storage,FnxSushiFarmErrorReporter,baseProxy{
 
     constructor(address _implementation) baseProxy(_implementation) public {
 
@@ -49,6 +50,20 @@ contract FnxSushiFarmProxy is FnxSushiFarmErrorReporter,baseProxy{
 
 
     function getMineInfo(uint256 /*_pid*/) public view returns (uint256,uint256,uint256,uint256)
+    {
+        delegateToViewAndReturn();
+    }
+
+    function _poolInfo(uint256 /*_pid*/) public view returns (
+        address /*lpToken*/,         // Address of LP token contract.
+        uint256 /*currentSupply*/,    //
+        uint256 /*bonusStartBlock*/,  //
+        uint256 /*newStartBlock*/,    //
+        uint256 /*bonusEndBlock*/,    // Block number when bonus fnx period ends.
+        uint256 /*lastRewardBlock*/,  // Last block number that fnxs distribution occurs.
+        uint256 /*accFnxPerShare*/,// Accumulated fnxs per share, times 1e12. See below.
+        uint256 /*fnxPerBlock*/,   // fnx tokens created per block.
+        uint256 /*totalDebtReward*/)
     {
         delegateToViewAndReturn();
     }
