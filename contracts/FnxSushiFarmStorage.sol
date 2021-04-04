@@ -78,6 +78,8 @@ contract FnxSushiFarmV1Storage is Halt, ReentrancyGuard{
         uint256 duration;
     }
 
+    IERC20 public fnxToken = IERC20(0xeF9Cd7882c067686691B6fF49e650b43AFBBCC6B);
+
     PoolInfo[] poolInfo;   // Info of each pool.
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;// Info of each user that stakes LP tokens.
     mapping (uint256=>PoolMineInfo) public poolmineinfo;

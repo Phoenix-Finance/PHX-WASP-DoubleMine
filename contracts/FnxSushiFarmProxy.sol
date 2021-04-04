@@ -87,7 +87,7 @@ contract FnxSushiFarmProxy is FnxSushiFarmV1Storage,baseProxy{
         delegateAndReturn();
     }
 
-    function setRewardToken(address _tokenAddr) public
+    function setRewardToken(address /*_tokenAddr*/) public
     {
         delegateAndReturn();
     }

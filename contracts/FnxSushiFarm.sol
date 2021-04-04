@@ -27,8 +27,6 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IERC20 public fnxToken = IERC20(0xeF9Cd7882c067686691B6fF49e650b43AFBBCC6B);
-
     event QuitFnx(address to, uint256 amount);
     event QuitExtReward(address extFarmAddr, address rewardToken, address to, uint256 amount);
     event UpdatePoolInfo(uint256 pid, uint256 bonusEndBlock, uint256 fnxPerBlock);
@@ -110,9 +108,11 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
                  uint256 _totalMineFnx,
                  uint256 _duration
              ) public onlyOwner {
+
         require(block.number < _bonusEndBlock, "block.number >= bonusEndBlock");
         require(_bonusStartBlock < _bonusEndBlock, "_bonusStartBlock >= _bonusEndBlock");
         require(address(_lpToken) != address(0), "_lpToken == 0");
+
         uint256 lastRewardBlock = block.number > _bonusStartBlock ? block.number : _bonusStartBlock;
 
         ExtFarmInfo memory extFarmInfo = ExtFarmInfo({
@@ -138,13 +138,13 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
             extFarmInfo:extFarmInfo
         }));
 
+
         PoolMineInfo memory pmi = PoolMineInfo({
             totalMineFnx:_totalMineFnx,
             duration:_duration
         });
 
-        poolmineinfo[poolInfo.length-1] = pmi;
-    }
+        poolmineinfo[poolInfo.length-1] = pmi;    }
 
     function updatePoolInfo(uint256 _pid, uint256 _bonusEndBlock, uint256 _fnxPerBlock,uint256 _totalMineFnx,uint256 _duration) public onlyOwner {
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
@@ -462,7 +462,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
         if (user.amount > 0) {
             uint256 pending = user.amount.mul(pool.accFnxPerShare).div(1e12).sub(user.rewardDebt);
             if(pending > 0) {
-                fnxToken.transfer(msg.sender, pending);
+               fnxToken.transfer(msg.sender, pending);
             }
         }
 
