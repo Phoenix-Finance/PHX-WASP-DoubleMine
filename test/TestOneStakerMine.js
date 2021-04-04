@@ -39,7 +39,9 @@ contract('MinePoolProxy', function (accounts){
   let day     = 24*hour;
   let totalPlan  = 0;
   let proxy;
-
+  let fnxinst;
+  let sushiinst;
+  let lpToken;
 
   before("init", async()=>{
     minepool = await MinePool.new();
@@ -150,6 +152,25 @@ contract('MinePoolProxy', function (accounts){
                 res[1].toString(),
                 res[2].toString(),
                 res[3].toString())
+
+
+    let preBalance = web3.utils.fromWei(await fnxinst.balanceOf(accounts[0]));
+    let sushipreBalance = web3.utils.fromWei(await sushiinst.balanceOf(accounts[0]));
+
+    res = await proxy.withdraw(0,0,{from:accounts[0]});
+    assert.equal(res.receipt.status,true);
+    let afterBalance = web3.utils.fromWei(await fnxinst.balanceOf(accounts[0]))
+    console.log("fnx award=" + (afterBalance - preBalance));
+
+    let sushiafterBalance = web3.utils.fromWei(await sushiinst.balanceOf(accounts[0]));
+    console.log("sushi award=" + (sushiafterBalance - sushipreBalance));
+
+
+    let lppreBalance = web3.utils.fromWei(await lpToken.balanceOf(accounts[0]))
+    res = await proxy.withdraw(0,stakeAmount,{from:accounts[0]});
+    assert.equal(res.receipt.status,true);
+    let lpafterBalance = web3.utils.fromWei(await lpToken.balanceOf(accounts[0]))
+    console.log("lp balance=" + (lpafterBalance - lppreBalance));
 
 
   })
