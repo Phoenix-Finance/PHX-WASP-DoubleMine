@@ -1,7 +1,7 @@
 pragma solidity 0.5.16;
 import "./baseProxy.sol";
 import "./FnxSushiFarmStorage.sol";
-//pragma experimental ABIEncoderV2;
+pragma experimental ABIEncoderV2;
 /**
  * @title  Erc20Delegator Contract
 

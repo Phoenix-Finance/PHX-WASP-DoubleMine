@@ -3,7 +3,7 @@ import { IERC20 } from "./openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./Halt.sol";
 import "./ReentrancyGuard.sol";
 
-//pragma experimental ABIEncoderV2;
+pragma experimental ABIEncoderV2;
 contract FnxSushiFarmErrorReporter {
     enum Error {
         NO_ERROR,
