@@ -1,5 +1,5 @@
 pragma solidity 0.5.16;
-pragma experimental ABIEncoderV2;
+pragma experimental ABIEncoderV2;//do not set array variable to public otherwise will be not verified
 
 import "./openzeppelin/contracts/ownership/Ownable.sol";
 import "./openzeppelin/contracts/math/SafeMath.sol";
