@@ -310,7 +310,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
         require(extFarmAddr != address(0x0),"extFarmAddr == 0x0");
         PoolInfo storage pool = poolInfo[_pid];
 
-        require(pool.extFarmInfo.extFarmAddr == address(0x0),"cannot set extFramAddr again");
+       // require(pool.extFarmInfo.extFarmAddr == address(0x0),"cannot set extFramAddr again");
 
         uint256 extPoolLength = ISushiChef(extFarmAddr).poolLength();
         require(_extPid < extPoolLength,"bad _extPid");

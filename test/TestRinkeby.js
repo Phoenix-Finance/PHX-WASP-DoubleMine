@@ -576,7 +576,7 @@ let prxoxyabi =  [
     "type": "function"
   }
 ];
-const minePool = new web3.eth.Contract(prxoxyabi, '0xa9b51a03f7395af3533040393b8cd35316288063');
+const minePool = new web3.eth.Contract(prxoxyabi, '0xb249ea8403d68372c8d248be767c8de6ef1d8c1e');
 
 async function checkpara() {
   let r1 = await minePool.methods.getMineInfo(0).call();
@@ -592,6 +592,10 @@ async function checkpara() {
   console.log("poolinf=",res[0].toString(),res[1].toString(),res[2].toString(),
     res[3].toString(),res[4].toString(),res[5].toString(),
     res[6].toString(),res[7].toString(),res[8].toString());
+
+  res = await minePool.methods.getImplementation().call();
+  console.log(res)
+
 }
 
 checkpara()
