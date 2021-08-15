@@ -41,8 +41,8 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
         uint256 newStartBlock,    //
         uint256 bonusEndBlock,    // Block number when bonus phx period ends.
         uint256 lastRewardBlock,  // Last block number that phxs distribution occurs.
-        uint256 accPhxPerShare,// Accumulated phxs per share, times 1e12. See below.
-        uint256 phxPerBlock,   // phx tokens created per block.
+        uint256 accRewardPerShare,// Accumulated phxs per share, times 1e12. See below.
+        uint256 rewardPerBlock,   // phx tokens created per block.
         uint256 totalDebtReward) {
 
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
