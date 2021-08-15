@@ -189,14 +189,14 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        uint256 accPhxPerShare = pool.accRewardPerShare;
+        uint256 accRewardPerShare = pool.accRewardPerShare;
         if (block.number > pool.lastRewardBlock && pool.currentSupply != 0) {
             uint256 multiplier = getMultiplier(_pid);
-            uint256 phxReward = multiplier.mul(pool.rewardPerBlock);
-            accPhxPerShare = accPhxPerShare.add(phxReward.mul(1e12).div(pool.currentSupply));
+            uint256 reward = multiplier.mul(pool.rewardPerBlock);
+            accRewardPerShare = accRewardPerShare.add(reward.mul(1e12).div(pool.currentSupply));
         }
 
-        return (user.amount, user.amount.mul(accPhxPerShare).div(1e12).sub(user.rewardDebt));
+        return (user.amount, user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt));
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -234,7 +234,7 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
     }
 
     function getExtFarmRewardRate(IChef chef,IERC20 lpToken, uint256 extPid) internal view returns(uint256 rate){
-         uint256 multiplier = chef.getMultiplier(block.number-1, block.number);
+        uint256 multiplier = chef.getMultiplier(block.number-1, block.number);
         uint256 extRewardPerBlock = chef.waspPerBlock();
         (,uint256 allocPoint,,) = chef.poolInfo(extPid);
         uint256 totalAllocPoint = chef.totalAllocPoint();
@@ -399,7 +399,7 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
         
     }
 
-    function withDrawLP(uint256 _pid,uint256 _amount) internal{
+    function withDrawLPFromExt(uint256 _pid,uint256 _amount) internal{
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user =  userInfo[_pid][msg.sender];
@@ -503,7 +503,7 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
 
-        withDrawLP(_pid,_amount);
+        withDrawLPFromExt(_pid,_amount);
 
         updatePool(_pid);
 
