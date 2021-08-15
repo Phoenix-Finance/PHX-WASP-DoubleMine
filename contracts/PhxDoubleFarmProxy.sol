@@ -1,19 +1,19 @@
 pragma solidity ^0.5.16;
-import "./TokenUnlockData.sol";
+
+import "./PhxDoubleFarmStorage.sol";
 import "./proxy/ZiplinProxy.sol";
 
-contract TokenUnlockProxy is Proxy,TokenUnlockData {
+contract TokenUnlockProxy is Proxy,PhxDoubleFarmV1Storage {
 
     event Upgraded(address indexed implementation);
 
-    constructor(address _implAddress,address _phxAddress,address _multiSignature)
+    constructor(address _implAddress,address _rewardToken,address _multiSignature)
         multiSignatureClient(_multiSignature)
         public
     {
-        phxAddress = _phxAddress;
+        rewardToken = _rewardToken;
         _setImplementation(_implAddress);
     }
-
 
 
     /**

@@ -1,10 +1,11 @@
 pragma solidity 0.5.16;
-import { IERC20 } from "./openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import "./Halt.sol";
 import "./ReentrancyGuard.sol";
+import "./multiSignatureClient.sol";
+import "./Operator.sol";
 
-pragma experimental ABIEncoderV2;
-contract FnxSushiFarmErrorReporter {
+contract PhxDoubleFarmErrorReporter {
     enum Error {
         NO_ERROR,
         UNAUTHORIZED
@@ -42,7 +43,7 @@ contract FnxSushiFarmErrorReporter {
     }
 }
 
-contract FnxSushiFarmV1Storage is Halt, ReentrancyGuard{
+contract PhxDoubleFarmV1Storage is multiSignatureClient,Operator,Halt, ReentrancyGuard{
     // Info of each user.
     struct UserInfo {
         uint256 amount;     // How many LP tokens the user has provided.
@@ -61,24 +62,26 @@ contract FnxSushiFarmV1Storage is Halt, ReentrancyGuard{
 
     // Info of each pool.
     struct PoolInfo {
-        IERC20  lpToken;          // Address of LP token contract. 0
+        address  lpToken;          // Address of LP token contract. 0
         uint256 currentSupply;    //1
         uint256 bonusStartBlock;  //2
         uint256 newStartBlock;    //3
-        uint256 bonusEndBlock;    // Block number when bonus fnx period ends.4
-        uint256 lastRewardBlock;  // Last block number that fnxs distribution occurs.5
-        uint256 accFnxPerShare;// Accumulated Fnx per share, times 1e12. See below.6
-        uint256 fnxPerBlock;   // fnx tokens created per block.7
+        uint256 bonusEndBlock;    // Block number when bonus phx period ends.4
+        uint256 lastRewardBlock;  // Last block number that phxs distribution occurs.5
+        uint256 accRewardPerShare;// Accumulated phx per share, times 1e12. See below.6
+        uint256 rewardPerBlock;   // phx tokens created per block.7
         uint256 totalDebtReward;  //8
+        uint256 bonusStartTime;
         ExtFarmInfo extFarmInfo;
     }
 
     struct PoolMineInfo {
-        uint256 totalMineFnx;
+        uint256 totalMineReward;
         uint256 duration;
     }
-    //use cFnx
-    IERC20 public fnxToken = IERC20(0x9d7beb4265817a4923FAD9Ca9EF8af138499615d);
+
+    //use cPhx
+    address public rewardToken;
     mapping (uint256=>PoolMineInfo) public poolmineinfo;
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;// Info of each user that stakes LP tokens.
     PoolInfo[] poolInfo;   // Info of each pool.

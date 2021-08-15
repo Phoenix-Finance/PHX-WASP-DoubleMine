@@ -1,36 +1,31 @@
 pragma solidity 0.5.16;
-pragma experimental ABIEncoderV2;//do not set array variable to public otherwise will be not verified
+import "./PhxDoubleFarmStorage.sol";
+import "./IERC20.sol";
+import "./SafeMath.sol";
+import "./SafeERC20.sol";
 
-import "./openzeppelin/contracts/ownership/Ownable.sol";
-import "./openzeppelin/contracts/math/SafeMath.sol";
-import "./openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "./openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./FnxSushiFarmStorage.sol";
-import "./FnxSushiFarmInterface.sol";
-//import "./UniFarm.sol";
-
-interface ISushiChef {
+interface IChef {
     function deposit(uint256 _pid, uint256 _amount) external;
     function emergencyWithdraw(uint256 _pid) external;
     function getMultiplier(uint256 _from, uint256 _to) external view returns (uint256);
-    function pendingSushi(uint256 _pid, address _user)  external view returns (uint256);
-    function sushi() external view returns (address);
-    function sushiPerBlock() external view returns (uint256);
-    function poolInfo(uint256) external  view returns ( address lpToken, uint256 allocPoint, uint256 lastRewardBlock, uint256 accsushiPerShare);
+    function pendingWasp(uint256 _pid, address _user)  external view returns (uint256);
+    function wasp() external view returns (address);
+    function waspPerBlock() external view returns (uint256);
+    function poolInfo(uint256) external  view returns ( address lpToken, uint256 allocPoint, uint256 lastRewardBlock, uint256 accWaspPerShare);
     function poolLength() external view returns (uint256);
     function totalAllocPoint() external view returns (uint256);
     function userInfo(uint256, address) external view returns (uint256 amount, uint256 rewardDebt);
     function withdraw(uint256 _pid, uint256 _amount) external;
 }
 
-contract FnxSushiFarm is FnxSushiFarmV1Storage {
+contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    event QuitFnx(address to, uint256 amount);
+    event QuitPhx(address to, uint256 amount);
     event QuitExtReward(address extFarmAddr, address rewardToken, address to, uint256 amount);
-    event UpdatePoolInfo(uint256 pid, uint256 bonusEndBlock, uint256 fnxPerBlock);
-    event WithdrawFnx(address to, uint256 amount);
+    event UpdatePoolInfo(uint256 pid, uint256 bonusEndBlock, uint256 phxPerBlock);
+    event WithdrawPhx(address to, uint256 amount);
     event DoubleFarmingEnable(uint256 pid, bool flag);
     event SetExtFarm(uint256 pid, address extFarmAddr, uint256 extPid );
     event EmergencyWithdraw(uint256 indexed pid);
@@ -39,61 +34,53 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
-
-    function initialize() onlyOwner public {
-
-    }
-
-    function update() onlyOwner public {
-    }
-
     function _poolInfo(uint256 _pid) external view returns (
         address lpToken,         // Address of LP token contract.
         uint256 currentSupply,    //
         uint256 bonusStartBlock,  //
         uint256 newStartBlock,    //
-        uint256 bonusEndBlock,    // Block number when bonus fnx period ends.
+        uint256 bonusEndBlock,    // Block number when bonus phx period ends.
+        uint256 lastRewardBlock,  // Last block number that phxs distribution occurs.
+        uint256 accPhxPerShare,// Accumulated phxs per share, times 1e12. See below.
+        uint256 phxPerBlock,   // phx tokens created per block.
+        uint256 totalDebtReward) {
 
-        uint256 lastRewardBlock,  // Last block number that fnxs distribution occurs.
-        uint256 accFnxPerShare,// Accumulated fnxs per share, times 1e12. See below.
-        uint256 fnxPerBlock,   // fnx tokens created per block.
-        uint256 totalDebtReward){
+        require(_pid < poolInfo.length,"pid >= poolInfo.length");
+        PoolInfo storage pool = poolInfo[_pid];
+        return (
+            address(pool.lpToken),
+            pool.currentSupply,
+            pool.bonusStartBlock,
+            pool.newStartBlock,
+            pool.bonusEndBlock,
+            pool.lastRewardBlock,
+            pool.accRewardPerShare,
+            pool.rewardPerBlock,
+            pool.totalDebtReward
+            );
 
-            require(_pid < poolInfo.length,"pid >= poolInfo.length");
-            PoolInfo storage pool = poolInfo[_pid]; 
-
-            return (
-                address(pool.lpToken),
-                pool.currentSupply,
-                pool.bonusStartBlock,
-                pool.newStartBlock,
-                pool.bonusEndBlock,
-                pool.lastRewardBlock,
-                pool.accFnxPerShare,
-                pool.fnxPerBlock,
-                pool.totalDebtReward
-                );
-        }
+    }
     
     function _extFarmInfo(uint256 _pid) external view returns (
 		address extFarmAddr,  
         bool extEnableDeposit,
         uint256 extPid,
         uint256 extRewardPerShare,
-        uint256 extTotalDebtReward,  //
+        uint256 extTotalDebtReward,
         bool extEnableClaim){
 
-            require(_pid < poolInfo.length,"pid >= poolInfo.length");
-            PoolInfo storage pool = poolInfo[_pid]; 
+        require(_pid < poolInfo.length,"pid >= poolInfo.length");
+        PoolInfo storage pool = poolInfo[_pid];
 
-            return (
-                pool.extFarmInfo.extFarmAddr,
-                pool.extFarmInfo.extEnableDeposit,
-                pool.extFarmInfo.extPid,
-                pool.extFarmInfo.extRewardPerShare,
-                pool.extFarmInfo.extTotalDebtReward,
-                pool.extFarmInfo.extEnableClaim);
-        }
+        return (
+            pool.extFarmInfo.extFarmAddr,
+            pool.extFarmInfo.extEnableDeposit,
+            pool.extFarmInfo.extPid,
+            pool.extFarmInfo.extRewardPerShare,
+            pool.extFarmInfo.extTotalDebtReward,
+            pool.extFarmInfo.extEnableClaim);
+
+    }
 
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
@@ -102,18 +89,24 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
     function add(address _lpToken,
-                 uint256 _bonusStartBlock,
+                 uint256 _bonusStartTime,
                  uint256 _bonusEndBlock,
-                 uint256 _fnxPerBlock,
-                 uint256 _totalMineFnx,
-                 uint256 _duration
-             ) public onlyOwner {
+                 uint256 _rewardPerBlock,
+                 uint256 _totalMineReward,
+                 uint256 _duration,
+                 uint256 _secPerBlk
+             ) public onlyOperator(1) {
 
         require(block.number < _bonusEndBlock, "block.number >= bonusEndBlock");
-        require(_bonusStartBlock < _bonusEndBlock, "_bonusStartBlock >= _bonusEndBlock");
+        //require(_bonusStartBlock < _bonusEndBlock, "_bonusStartBlock >= _bonusEndBlock");
+        require(block.timestamp<_bonusStartTime);
+        //estimate entime
+        uint256 endTime = block.timestamp.add((_bonusEndBlock.sub(block.number)).mul(_secPerBlk));
+        require(_bonusStartTime<endTime);
+
         require(address(_lpToken) != address(0), "_lpToken == 0");
 
-        uint256 lastRewardBlock = block.number > _bonusStartBlock ? block.number : _bonusStartBlock;
+        //uint256 lastRewardBlock = block.number > _bonusStartBlock ? block.number : _bonusStartBlock;
 
         ExtFarmInfo memory extFarmInfo = ExtFarmInfo({
                 extFarmAddr:address(0x0),
@@ -126,27 +119,36 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
 
 
         poolInfo.push(PoolInfo({
-            lpToken: IERC20(_lpToken),
+            lpToken: _lpToken,
             currentSupply: 0,
-            bonusStartBlock: _bonusStartBlock,
-            newStartBlock: _bonusStartBlock,
+            bonusStartBlock: 0,
+            newStartBlock: 0,
             bonusEndBlock: _bonusEndBlock,
-            lastRewardBlock: lastRewardBlock,
-            accFnxPerShare: 0,
-            fnxPerBlock: _fnxPerBlock,
+            lastRewardBlock: 0,
+            accRewardPerShare: 0,
+            rewardPerBlock: _rewardPerBlock,
             totalDebtReward: 0,
+            bonusStartTime: _bonusStartTime,
             extFarmInfo:extFarmInfo
         }));
 
 
         PoolMineInfo memory pmi = PoolMineInfo({
-            totalMineFnx:_totalMineFnx,
+            totalMineReward: _totalMineReward,
             duration:_duration
         });
 
-        poolmineinfo[poolInfo.length-1] = pmi;    }
+        poolmineinfo[poolInfo.length-1] = pmi;
+    }
 
-    function updatePoolInfo(uint256 _pid, uint256 _bonusEndBlock, uint256 _fnxPerBlock,uint256 _totalMineFnx,uint256 _duration) public onlyOwner {
+    function updatePoolInfo(uint256 _pid,
+                            uint256 _bonusEndBlock,
+                            uint256 _rewardPerBlock,
+                            uint256 _totalMineReward,
+                            uint256 _duration)
+            public
+            onlyOperator(1)
+    {
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         require(_bonusEndBlock > block.number, "_bonusEndBlock <= block.number");
         updatePool(_pid);
@@ -156,12 +158,12 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
         }
 
         pool.bonusEndBlock = _bonusEndBlock;
-        pool.fnxPerBlock = _fnxPerBlock;
+        pool.rewardPerBlock = _rewardPerBlock;
         //keep it to later show
-        poolmineinfo[_pid].totalMineFnx=_totalMineFnx;
+        poolmineinfo[_pid].totalMineReward = _totalMineReward;
         poolmineinfo[_pid].duration=_duration;
 
-        emit UpdatePoolInfo(_pid, _bonusEndBlock, _fnxPerBlock);
+        emit UpdatePoolInfo(_pid, _bonusEndBlock, _rewardPerBlock);
     }
 
     function getMultiplier(uint256 _pid) internal view returns (uint256) {
@@ -182,19 +184,19 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
         return block.number.sub(pool.lastRewardBlock);
     }
 
-    // View function to see pending fnxs on frontend.
-    function pendingFnx(uint256 _pid, address _user) public view returns (uint256,uint256) {
+    // View function to see pending phxs on frontend.
+    function pendingPhx(uint256 _pid, address _user) public view returns (uint256,uint256) {
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        uint256 accFnxPerShare = pool.accFnxPerShare;
+        uint256 accPhxPerShare = pool.accRewardPerShare;
         if (block.number > pool.lastRewardBlock && pool.currentSupply != 0) {
             uint256 multiplier = getMultiplier(_pid);
-            uint256 fnxReward = multiplier.mul(pool.fnxPerBlock);
-            accFnxPerShare = accFnxPerShare.add(fnxReward.mul(1e12).div(pool.currentSupply));
+            uint256 phxReward = multiplier.mul(pool.rewardPerBlock);
+            accPhxPerShare = accPhxPerShare.add(phxReward.mul(1e12).div(pool.currentSupply));
         }
 
-        return (user.amount, user.amount.mul(accFnxPerShare).div(1e12).sub(user.rewardDebt));
+        return (user.amount, user.amount.mul(accPhxPerShare).div(1e12).sub(user.rewardDebt));
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -214,7 +216,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
         return allTotalUnclaimed;
     }
 
-    function distributeFinalExtReward(uint256 _pid, uint256 _amount) public onlyOwner{
+    function distributeFinalExtReward(uint256 _pid, uint256 _amount) public onlyOperator(0) validCall {
 
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
@@ -222,7 +224,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
 
         uint256 allUnClaimedExtReward = totalUnclaimedExtFarmReward(pool.extFarmInfo.extFarmAddr);
 
-        uint256 extRewardCurrentBalance = IERC20(ISushiChef(pool.extFarmInfo.extFarmAddr).sushi()).balanceOf(address(this));
+        uint256 extRewardCurrentBalance = IERC20(IChef(pool.extFarmInfo.extFarmAddr).wasp()).balanceOf(address(this));
 
         uint256 maxDistribute = extRewardCurrentBalance.sub(allUnClaimedExtReward);
 
@@ -231,15 +233,14 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
         pool.extFarmInfo.extRewardPerShare = _amount.mul(1e12).div(pool.currentSupply).add(pool.extFarmInfo.extRewardPerShare);
     }
 
-    function getExtFarmRewardRate(ISushiChef sushiChef,IERC20 lpToken, uint256 extPid) internal view returns(uint256 rate){
+    function getExtFarmRewardRate(IChef chef,IERC20 lpToken, uint256 extPid) internal view returns(uint256 rate){
+         uint256 multiplier = chef.getMultiplier(block.number-1, block.number);
+        uint256 extRewardPerBlock = chef.waspPerBlock();
+        (,uint256 allocPoint,,) = chef.poolInfo(extPid);
+        uint256 totalAllocPoint = chef.totalAllocPoint();
+        uint256 totalSupply = lpToken.balanceOf(address(chef));
 
-        uint256 multiplier = sushiChef.getMultiplier(block.number-1, block.number);
-        uint256 sushiPerBlock = sushiChef.sushiPerBlock();
-        (,uint256 allocPoint,,) = sushiChef.poolInfo(extPid);
-        uint256 totalAllocPoint = sushiChef.totalAllocPoint();
-        uint256 totalSupply = lpToken.balanceOf(address(sushiChef));
-
-        rate = multiplier.mul(sushiPerBlock).mul(allocPoint).mul(1e12).div(totalAllocPoint).div(totalSupply);
+        rate = multiplier.mul(extRewardPerBlock).mul(allocPoint).mul(1e12).div(totalAllocPoint).div(totalSupply);
     }
 
     function extRewardPerBlock(uint256 _pid) public view returns(uint256){
@@ -248,9 +249,9 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
 
         if(!pool.extFarmInfo.extEnableDeposit) return 0;
 
-        ISushiChef sushiChef = ISushiChef(pool.extFarmInfo.extFarmAddr);
-        uint256 rate = getExtFarmRewardRate(sushiChef, pool.lpToken,pool.extFarmInfo.extPid);
-        (uint256 amount,) = sushiChef.userInfo(_pid,address(this));
+        IChef chef = IChef(pool.extFarmInfo.extFarmAddr);
+        uint256 rate = getExtFarmRewardRate(chef, IERC20(pool.lpToken),pool.extFarmInfo.extPid);
+        (uint256 amount,) = chef.userInfo(_pid,address(this));
         uint256 extReward = rate.mul(amount).div(1e12);
 
         return extReward;
@@ -258,44 +259,44 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
     
     function allPendingReward(uint256 _pid,address _user) public view returns(uint256,uint256,uint256){
         uint256 depositAmount;
-        uint256 fnxReward;
-        uint256 sushiReward;
+        uint256 phxReward;
+        uint256 waspReward;
         
-        (depositAmount,fnxReward) = pendingFnx(_pid,_user);
-        sushiReward = pendingExtReward(_pid,_user);
+        (depositAmount, phxReward) = pendingPhx(_pid,_user);
+        waspReward = pendingExtReward(_pid,_user);
         
-        return (depositAmount,fnxReward,sushiReward);
+        return (depositAmount, phxReward, waspReward);
     }
 
-    function enableDoubleFarming(uint256 _pid, bool enable)public onlyOwner{
+    function enableDoubleFarming(uint256 _pid, bool enable) public onlyOperator(1){
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
 
         require(pool.extFarmInfo.extFarmAddr != address(0x0),"pool not supports double farming yet");
         if(pool.extFarmInfo.extEnableDeposit != enable){
 
-            uint256 oldSuShiRewarad = IERC20(ISushiChef(pool.extFarmInfo.extFarmAddr).sushi()).balanceOf(address(this));
+            uint256 oldWaspRewarad = IERC20(IChef(pool.extFarmInfo.extFarmAddr).wasp()).balanceOf(address(this));
 
             if(enable){
-                pool.lpToken.approve(pool.extFarmInfo.extFarmAddr,0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
+                IERC20(pool.lpToken).approve(pool.extFarmInfo.extFarmAddr,0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
                 if(pool.currentSupply > 0) {
-                    ISushiChef(pool.extFarmInfo.extFarmAddr).deposit(pool.extFarmInfo.extPid,pool.currentSupply);
+                    IChef(pool.extFarmInfo.extFarmAddr).deposit(pool.extFarmInfo.extPid,pool.currentSupply);
                 }
 
                 pool.extFarmInfo.extEnableClaim = true;
 
             }else{
-                pool.lpToken.approve(pool.extFarmInfo.extFarmAddr,0);
-                (uint256 amount,) = ISushiChef(pool.extFarmInfo.extFarmAddr).userInfo(pool.extFarmInfo.extPid,address(this));
+                IERC20(pool.lpToken).approve(pool.extFarmInfo.extFarmAddr,0);
+                (uint256 amount,) = IChef(pool.extFarmInfo.extFarmAddr).userInfo(pool.extFarmInfo.extPid,address(this));
                 if(amount > 0){
-                    ISushiChef(pool.extFarmInfo.extFarmAddr).withdraw(pool.extFarmInfo.extPid,amount);
+                    IChef(pool.extFarmInfo.extFarmAddr).withdraw(pool.extFarmInfo.extPid,amount);
                 }
             }
 
             if(pool.currentSupply > 0){
-                uint256 deltaSuShiReward = IERC20(ISushiChef(pool.extFarmInfo.extFarmAddr).sushi()).balanceOf(address(this)).sub(oldSuShiRewarad);
+                uint256 deltaWaspReward = IERC20(IChef(pool.extFarmInfo.extFarmAddr).wasp()).balanceOf(address(this)).sub(oldWaspRewarad);
 
-                pool.extFarmInfo.extRewardPerShare = deltaSuShiReward.mul(1e12).div(pool.currentSupply).add(pool.extFarmInfo.extRewardPerShare);
+                pool.extFarmInfo.extRewardPerShare = deltaWaspReward.mul(1e12).div(pool.currentSupply).add(pool.extFarmInfo.extRewardPerShare);
             }
 
             pool.extFarmInfo.extEnableDeposit = enable;
@@ -305,18 +306,18 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
 
     }
 
-    function setDoubleFarming(uint256 _pid,address extFarmAddr,uint256 _extPid) public onlyOwner{
+    function setDoubleFarming(uint256 _pid,address extFarmAddr,uint256 _extPid) public onlyOperator(1){
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         require(extFarmAddr != address(0x0),"extFarmAddr == 0x0");
         PoolInfo storage pool = poolInfo[_pid];
 
        // require(pool.extFarmInfo.extFarmAddr == address(0x0),"cannot set extFramAddr again");
 
-        uint256 extPoolLength = ISushiChef(extFarmAddr).poolLength();
+        uint256 extPoolLength = IChef(extFarmAddr).poolLength();
         require(_extPid < extPoolLength,"bad _extPid");
 
-        (address lpToken,,,) = ISushiChef(extFarmAddr).poolInfo(_extPid);
-        require(lpToken == address(pool.lpToken),"pool mismatch between FnxFarm and extFarm");
+        (address lpToken,,,) = IChef(extFarmAddr).poolInfo(_extPid);
+        require(lpToken == address(pool.lpToken),"pool mismatch between PhxFarm and extFarm");
 
         pool.extFarmInfo.extFarmAddr = extFarmAddr;
         pool.extFarmInfo.extPid = _extPid;
@@ -325,7 +326,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
 
     }
 
-    function disableExtEnableClaim(uint256 _pid)public onlyOwner{
+    function disableExtEnableClaim(uint256 _pid)public onlyOperator(1){
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
 
@@ -350,16 +351,16 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
         uint256 extRewardPerShare = pool.extFarmInfo.extRewardPerShare;
 
         if(pool.extFarmInfo.extEnableDeposit){
-            uint256 totalPendingSushi = ISushiChef(pool.extFarmInfo.extFarmAddr).pendingSushi(pool.extFarmInfo.extPid,address(this));
-            extRewardPerShare = totalPendingSushi.mul(1e12).div(pool.currentSupply).add(extRewardPerShare);
+            uint256 totalPendingWasp = IChef(pool.extFarmInfo.extFarmAddr).pendingWasp(pool.extFarmInfo.extPid,address(this));
+            extRewardPerShare = totalPendingWasp.mul(1e12).div(pool.currentSupply).add(extRewardPerShare);
         }
 
-        uint256 userPendingSuShi = user.amount.mul(extRewardPerShare).div(1e12).sub(user.extRewardDebt);
+        uint256 userPendingWasp = user.amount.mul(extRewardPerShare).div(1e12).sub(user.extRewardDebt);
 
-        return userPendingSuShi;
+        return userPendingWasp;
     }
 
-    function depositLPToSuShiChef(uint256 _pid,uint256 _amount) internal {
+    function depositLPToChef(uint256 _pid,uint256 _amount) internal {
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
 
@@ -369,26 +370,26 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
 
         if(pool.extFarmInfo.extEnableDeposit){
             
-            uint256 oldSuShiRewarad = IERC20(ISushiChef(pool.extFarmInfo.extFarmAddr).sushi()).balanceOf(address(this));
+            uint256 oldWaspRewarad = IERC20(IChef(pool.extFarmInfo.extFarmAddr).wasp()).balanceOf(address(this));
             uint256 oldTotalDeposit = pool.currentSupply.sub(_amount);
             
-            ISushiChef(pool.extFarmInfo.extFarmAddr).deposit(pool.extFarmInfo.extPid, _amount);
+            IChef(pool.extFarmInfo.extFarmAddr).deposit(pool.extFarmInfo.extPid, _amount);
 
-            uint256 deltaSuShiReward = IERC20(ISushiChef(pool.extFarmInfo.extFarmAddr).sushi()).balanceOf(address(this));
-            deltaSuShiReward = deltaSuShiReward.sub(oldSuShiRewarad);
+            uint256 deltaWaspReward = IERC20(IChef(pool.extFarmInfo.extFarmAddr).wasp()).balanceOf(address(this));
+            deltaWaspReward = deltaWaspReward.sub(oldWaspRewarad);
 
-            if(oldTotalDeposit > 0 && deltaSuShiReward > 0){
-                pool.extFarmInfo.extRewardPerShare = deltaSuShiReward.mul(1e12).div(oldTotalDeposit).add(pool.extFarmInfo.extRewardPerShare);
+            if(oldTotalDeposit > 0 && deltaWaspReward > 0){
+                pool.extFarmInfo.extRewardPerShare = deltaWaspReward.mul(1e12).div(oldTotalDeposit).add(pool.extFarmInfo.extRewardPerShare);
             }
 
         }
 
         if(pool.extFarmInfo.extEnableClaim) {
-            uint256 transferSuShiAmount = user.amount.sub(_amount).mul(pool.extFarmInfo.extRewardPerShare).div(1e12).sub(user.extRewardDebt);
+            uint256 transferWaspAmount = user.amount.sub(_amount).mul(pool.extFarmInfo.extRewardPerShare).div(1e12).sub(user.extRewardDebt);
             
-            if(transferSuShiAmount > 0){
-                address sushiToken = ISushiChef(pool.extFarmInfo.extFarmAddr).sushi();
-                IERC20(sushiToken).safeTransfer(msg.sender,transferSuShiAmount);
+            if(transferWaspAmount > 0){
+                address WaspToken = IChef(pool.extFarmInfo.extFarmAddr).wasp();
+                IERC20(WaspToken).safeTransfer(msg.sender,transferWaspAmount);
             }
         }
 
@@ -398,7 +399,7 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
         
     }
 
-    function withDrawLPFromSuShi(uint256 _pid,uint256 _amount) internal{
+    function withDrawLP(uint256 _pid,uint256 _amount) internal{
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user =  userInfo[_pid][msg.sender];
@@ -409,22 +410,23 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
             
             require(user.amount >= _amount,"withdraw too much lpToken");
 
-            uint256 oldSuShiRewarad = IERC20(ISushiChef(pool.extFarmInfo.extFarmAddr).sushi()).balanceOf(address(this));
+            uint256 oldWaspRewarad = IERC20(IChef(pool.extFarmInfo.extFarmAddr).wasp()).balanceOf(address(this));
             uint256 oldTotalDeposit = pool.currentSupply;
             
-            ISushiChef(pool.extFarmInfo.extFarmAddr).withdraw(pool.extFarmInfo.extPid, _amount);
+            IChef(pool.extFarmInfo.extFarmAddr).withdraw(pool.extFarmInfo.extPid, _amount);
 
-            uint256 deltaSuShiReward = IERC20(ISushiChef(pool.extFarmInfo.extFarmAddr).sushi()).balanceOf(address(this)).sub(oldSuShiRewarad);
-            if(oldTotalDeposit > 0 && deltaSuShiReward > 0) pool.extFarmInfo.extRewardPerShare = deltaSuShiReward.mul(1e12).div(oldTotalDeposit).add(pool.extFarmInfo.extRewardPerShare);
+            uint256 deltaWaspReward = IERC20(IChef(pool.extFarmInfo.extFarmAddr).wasp()).balanceOf(address(this)).sub(oldWaspRewarad);
+            if(oldTotalDeposit > 0 && deltaWaspReward > 0)
+                pool.extFarmInfo.extRewardPerShare = deltaWaspReward.mul(1e12).div(oldTotalDeposit).add(pool.extFarmInfo.extRewardPerShare);
             
         }
 
         if(pool.extFarmInfo.extEnableClaim) {
-            uint256 transferSuShiAmount = user.amount.mul(pool.extFarmInfo.extRewardPerShare).div(1e12).sub(user.extRewardDebt);
+            uint256 transferWaspAmount = user.amount.mul(pool.extFarmInfo.extRewardPerShare).div(1e12).sub(user.extRewardDebt);
 
-            if(transferSuShiAmount > 0){
-                address sushiToken = ISushiChef(pool.extFarmInfo.extFarmAddr).sushi();
-                IERC20(sushiToken).safeTransfer(msg.sender,transferSuShiAmount);
+            if(transferWaspAmount > 0){
+                address waspToken = IChef(pool.extFarmInfo.extFarmAddr).wasp();
+                IERC20(waspToken).safeTransfer(msg.sender, transferWaspAmount);
             }
         }
         
@@ -447,27 +449,36 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
         }
 
         uint256 multiplier = getMultiplier(_pid);
-        uint256 fnxReward = multiplier.mul(pool.fnxPerBlock);
-        pool.accFnxPerShare = pool.accFnxPerShare.add(fnxReward.mul(1e12).div(pool.currentSupply));
+        uint256 reward = multiplier.mul(pool.rewardPerBlock);
+        pool.accRewardPerShare = pool.accRewardPerShare.add(reward.mul(1e12).div(pool.currentSupply));
         pool.lastRewardBlock = block.number;
-
     }
 
-    // Deposit LP tokens to MasterChef for Fnx allocation.
+    // Deposit LP tokens to MasterChef for Phx allocation.
     function deposit(uint256 _pid, uint256 _amount) public  notHalted nonReentrant {
         require(_pid < poolInfo.length, "pid >= poolInfo.length");
 
         PoolInfo storage pool = poolInfo[_pid];
+        //to set start block number at init start
+        require(block.timestamp>pool.bonusStartTime);
+        if(pool.bonusStartBlock==0
+           &&pool.newStartBlock==0
+           &&pool.lastRewardBlock==0) {
+            pool.bonusStartBlock = block.number;
+            pool.newStartBlock = block.number;
+            pool.lastRewardBlock = block.number;
+        }
+
         UserInfo storage user = userInfo[_pid][msg.sender];
         if (user.amount > 0) {
-            uint256 pending = user.amount.mul(pool.accFnxPerShare).div(1e12).sub(user.rewardDebt);
+            uint256 pending = user.amount.mul(pool.accRewardPerShare).div(1e12).sub(user.rewardDebt);
             if(pending > 0) {
-               fnxToken.transfer(msg.sender, pending);
+                IERC20(rewardToken).transfer(msg.sender, pending);
             }
         }
 
         if(_amount > 0) {
-            pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
+            IERC20(pool.lpToken).safeTransferFrom(address(msg.sender), address(this), _amount);
             user.amount = user.amount.add(_amount);
             pool.currentSupply = pool.currentSupply.add(_amount);
         }
@@ -476,10 +487,10 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
         updatePool(_pid);
 
         // must excute after lpToken has beem transfered from user to this contract and the amount of user depoisted is updated.
-        depositLPToSuShiChef(_pid,_amount); 
+        depositLPToChef(_pid,_amount);
             
         pool.totalDebtReward = pool.totalDebtReward.sub(user.rewardDebt);
-        user.rewardDebt = user.amount.mul(pool.accFnxPerShare).div(1e12);
+        user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(1e12);
         pool.totalDebtReward = pool.totalDebtReward.add(user.rewardDebt);
 
         emit Deposit(msg.sender, _pid, _amount);
@@ -492,87 +503,87 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
 
-        withDrawLPFromSuShi(_pid,_amount);
+        withDrawLP(_pid,_amount);
 
         updatePool(_pid);
 
-        uint256 pending = user.amount.mul(pool.accFnxPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(pool.accRewardPerShare).div(1e12).sub(user.rewardDebt);
         if(pending > 0) {
-            fnxToken.transfer(msg.sender, pending);
+            IERC20(rewardToken).transfer(msg.sender, pending);
         }
 
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
             pool.currentSupply = pool.currentSupply.sub(_amount);
-            pool.lpToken.safeTransfer(address(msg.sender), _amount);
+            IERC20(pool.lpToken).safeTransfer(address(msg.sender), _amount);
         }
 
         pool.totalDebtReward = pool.totalDebtReward.sub(user.rewardDebt);
-        user.rewardDebt = user.amount.mul(pool.accFnxPerShare).div(1e12);
+        user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(1e12);
         pool.totalDebtReward = pool.totalDebtReward.add(user.rewardDebt);
 
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
 
-    function emergencyWithdraw(uint256 _pid) public onlyOwner {
+    function emergencyWithdraw(uint256 _pid) public onlyOperator(0) validCall {
         require(_pid < poolInfo.length, "pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
 
         if(pool.extFarmInfo.extFarmAddr == address(0x0)) return;
 
-        ISushiChef(pool.extFarmInfo.extFarmAddr).emergencyWithdraw(pool.extFarmInfo.extPid);
+        IChef(pool.extFarmInfo.extFarmAddr).emergencyWithdraw(pool.extFarmInfo.extPid);
 
         pool.extFarmInfo.extEnableDeposit = false;            
 
         emit EmergencyWithdraw(_pid);
     }
 
-    // Safe Fnx transfer function, just in case if rounding error causes pool to not have enough fnx.
-    function safeFnxTransfer(address _to, uint256 _amount) internal {
-        uint256 fnxBal = fnxToken.balanceOf(address(this));
-        if (_amount > fnxBal) {
-            fnxToken.transfer(_to, fnxBal);
+    // Safe Phx transfer function, just in case if rounding error causes pool to not have enough phx.
+    function safeRewardTransfer(address _to, uint256 _amount) internal {
+        uint256 rewardBal = IERC20(rewardToken).balanceOf(address(this));
+        if (_amount > rewardBal) {
+            IERC20(rewardToken).transfer(_to, rewardBal);
         } else {
-            fnxToken.transfer(_to, _amount);
+            IERC20(rewardToken).transfer(_to, _amount);
         }
     }
 
-    function quitFnx(address _to) public onlyOwner {
+    function quitPhxFarm(address _to) public onlyOperator(0) validCall {
         require(_to != address(0), "_to == 0");
-        uint256 fnxBal = fnxToken.balanceOf(address(this));
+        uint256 rewardTokenBal = IERC20(rewardToken).balanceOf(address(this));
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
             PoolInfo storage pool = poolInfo[pid];
-            require(block.number > pool.bonusEndBlock, "quitFnx block.number <= pid.bonusEndBlock");
+            require(block.number > pool.bonusEndBlock, "quitPhx block.number <= pid.bonusEndBlock");
             updatePool(pid);
-            uint256 fnxReward = pool.currentSupply.mul(pool.accFnxPerShare).div(1e12).sub(pool.totalDebtReward);
-            fnxBal = fnxBal.sub(fnxReward);
+            uint256 reward = pool.currentSupply.mul(pool.accRewardPerShare).div(1e12).sub(pool.totalDebtReward);
+            rewardTokenBal = rewardTokenBal.sub(reward);
         }
-        safeFnxTransfer(_to, fnxBal);
-        emit QuitFnx(_to, fnxBal);
+        safeRewardTransfer(_to, rewardTokenBal);
+        emit QuitPhx(_to, rewardTokenBal);
     }
 
-    function quitExtFarm(address extFarmAddr, address _to) public onlyOwner{
+    function quitExtFarm(address extFarmAddr, address _to) public onlyOperator(0) validCall {
         require(_to != address(0), "_to == 0");
         require(extFarmAddr != address(0), "extFarmAddr == 0");
 
-        IERC20 sushiToken = IERC20(ISushiChef(extFarmAddr).sushi());
+        IERC20 waspToken = IERC20(IChef(extFarmAddr).wasp());
 
-        uint256 sushiBalance = sushiToken.balanceOf(address(this));
+        uint256 waspBalance = waspToken.balanceOf(address(this));
 
         uint256 totalUnclaimedReward = totalUnclaimedExtFarmReward(extFarmAddr);
 
-        require(totalUnclaimedReward <= sushiBalance, "extreward shortage");
+        require(totalUnclaimedReward <= waspBalance, "extreward shortage");
 
-        uint256 quitBalance = sushiBalance.sub(totalUnclaimedReward);
+        uint256 quitBalance = waspBalance.sub(totalUnclaimedReward);
 
-        sushiToken.safeTransfer(_to, quitBalance);
-        emit QuitExtReward(extFarmAddr,address(sushiToken),_to, quitBalance);
+        waspToken.safeTransfer(_to, quitBalance);
+        emit QuitExtReward(extFarmAddr,address(waspToken),_to, quitBalance);
     }
 
-    function setRewardToken(address _tokenAddr) public onlyOwner {
-        fnxToken = IERC20(_tokenAddr);
+    function setRewardToken(address _tokenAddr) public onlyOperator(1) {
+        rewardToken = _tokenAddr;
     }
 
     function totalStaked(uint256 _pid) public view returns (uint256){
@@ -583,8 +594,8 @@ contract FnxSushiFarm is FnxSushiFarmV1Storage {
     }
 
     function getMineInfo(uint256 _pid) public view returns (uint256,uint256,uint256,uint256) {
-        return (poolmineinfo[_pid].totalMineFnx,poolmineinfo[_pid].duration,
-                poolInfo[_pid].bonusStartBlock,poolInfo[_pid].fnxPerBlock);
+        return (poolmineinfo[_pid].totalMineReward,poolmineinfo[_pid].duration,
+           poolInfo[_pid].bonusStartBlock,poolInfo[_pid].rewardPerBlock);
     }
 
  }

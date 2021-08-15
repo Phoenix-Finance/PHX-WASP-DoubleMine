@@ -1,5 +1,5 @@
 pragma solidity 0.5.16;
-import "./openzeppelin/contracts/ownership/Ownable.sol";
+import "./Ownable.sol";
 
 contract Halt is Ownable {
     
