@@ -33,6 +33,7 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
+    event GetBackPhx(address to, uint256 amount);
 
     constructor(address _multiSignature)
         multiSignatureClient(_multiSignature)
@@ -535,7 +536,7 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
     }
 
 
-    function emergencyWithdraw(uint256 _pid) public onlyOperator(0) validCall {
+    function emergencyWithdrawExtLp(uint256 _pid) public onlyOperator(0) validCall {
         require(_pid < poolInfo.length, "pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
 
@@ -589,6 +590,13 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
 
         waspToken.safeTransfer(_to, quitBalance);
         emit QuitExtReward(extFarmAddr,address(waspToken),_to, quitBalance);
+    }
+
+    function getBackPhx(address _to) public onlyOperator(0) validCall {
+        require(_to != address(0), "_to == 0");
+        uint256 rewardTokenBal = IERC20(rewardToken).balanceOf(address(this));
+        safeRewardTransfer(_to, rewardTokenBal);
+        emit GetBackPhx(_to, rewardTokenBal);
     }
 
     function setRewardToken(address _tokenAddr) public onlyOperator(1) {
