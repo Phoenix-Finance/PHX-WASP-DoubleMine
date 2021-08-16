@@ -159,7 +159,7 @@ contract('MinePoolProxy', function (accounts){
     res = await phxfarmproxyinst.allPendingReward(0,staker1)
     console.log("phxfarmproxyinst=",res[0].toString(),res[1].toString(),res[2].toString());
 
-    res = await phxfarmproxyinst.getPoolInfo(0)
+     res = await phxfarmproxyinst.getPoolInfo(0)
      console.log("poolinf=",res[0].toString(),res[1].toString(),res[2].toString(),
      res[3].toString(),res[4].toString(),res[5].toString(),
      res[6].toString(),res[7].toString(),res[8].toString());

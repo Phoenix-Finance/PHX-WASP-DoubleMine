@@ -48,7 +48,7 @@ contract('MinePoolProxy', function (accounts){
   let staker1 = accounts[2];
   let staker2 = accounts[3];
 
-  let operator0 = accounts[0];
+  let operator0 = accounts[9];
   let operator1 = accounts[1]
 
   let phxMineAmount = web3.utils.toWei('10000000', 'ether');
@@ -72,7 +72,7 @@ contract('MinePoolProxy', function (accounts){
   let wanfarminst;
 
   let lp;
-  let wasp
+  let wasp;
   let cphx;
   let mulSiginst;
   let startTime;
@@ -163,31 +163,44 @@ contract('MinePoolProxy', function (accounts){
   })
 //,emergencyWithdraw,quitPhxFarm,quitExtFarm
   it("[0020] multisig for distributeFinalExtReward,should pass", async()=>{
+    time.increaseTo(startTime+3000);
+    let extinfo = await phxfarmproxyinst.getExtFarmInfo(0);
+    let extAcc = extinfo[6];
+    console.log(extAcc.toString(10));
 
-    let preExtAcc = await phxfarmproxyinst._extFarmInfo()
-
-    res = await phxfarmproxyinst.allPendingReward(0,staker2)
+    let res = await phxfarmproxyinst.allPendingReward(0,staker2)
     console.log("phxfarmproxyinst=",res[0].toString(),res[1].toString(),res[2].toString());
-    let waspamount = res[2];
+    let waspamount = res[2].toString(10);
+
+    await wasp.mint(phxfarmproxyinst.address,waspamount);
 
     let msgData = phxfarmproxyinst.contract.methods.distributeFinalExtReward(0,waspamount).encodeABI();
-    let hash = await createApplication(mulSigInst,accounts[9],phxfarmproxyinst.address,0,msgData);
-    let res = await testViolation("multiSig distributeFinalExtReward: This tx is not aprroved",async function(){
-      await phxfarmproxyinst.distributeFinalExtReward(0,waspamount,{from:operator0});
-    });
-    assert.equal(res,false,"should return false");
-
-    let index = await mulSigInst.getApplicationCount(hash)
-    index = index.toNumber()-1;
-    console.log(index);
-
-    await mulSigInst.signApplication(hash,index,{from:accounts[7]})
-    await mulSigInst.signApplication(hash,index,{from:accounts[8]})
+    let hash = await createApplication(mulSiginst,accounts[9],phxfarmproxyinst.address,0,msgData);
 
     res = await testViolation("multiSig distributeFinalExtReward: This tx is not aprroved",async function(){
       await phxfarmproxyinst.distributeFinalExtReward(0,waspamount,{from:operator0});
     });
+    assert.equal(res,false,"should return false");
+
+    let index = await mulSiginst.getApplicationCount(hash)
+    index = index.toNumber()-1;
+    console.log(index);
+
+    res = await mulSiginst.signApplication(hash,index,{from:accounts[7]});
+    assert.equal(res.receipt.status,true);
+    res = await mulSiginst.signApplication(hash,index,{from:accounts[8]})
+    assert.equal(res.receipt.status,true);
+
+
+    res = await testViolation("multiSig distributeFinalExtReward: This tx is not aprroved",async function(){
+      await phxfarmproxyinst.distributeFinalExtReward(0,new BN(waspamount),{from:operator0});
+    });
     assert.equal(res,true,"should return false");
+
+    extinfo = await phxfarmproxyinst.getExtFarmInfo(0);
+    extAcc = extinfo[6];
+
+    console.log(extAcc.toString(10));
 
   })
 
