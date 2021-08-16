@@ -109,10 +109,10 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
 
         require(block.number < _bonusEndBlock, "block.number >= bonusEndBlock");
         //require(_bonusStartBlock < _bonusEndBlock, "_bonusStartBlock >= _bonusEndBlock");
-        require(block.timestamp<_bonusStartTime);
+        require(block.timestamp<_bonusStartTime,"start time is earlier than current time");
         //estimate entime
         uint256 endTime = block.timestamp.add((_bonusEndBlock.sub(block.number)).mul(_secPerBlk));
-        require(_bonusStartTime<endTime);
+        require(_bonusStartTime<endTime,"estimate end time is early than start time");
 
         require(address(_lpToken) != address(0), "_lpToken == 0");
 
