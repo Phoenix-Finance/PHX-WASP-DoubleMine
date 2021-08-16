@@ -41,7 +41,7 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
 
     }
 
-    function _poolInfo(uint256 _pid) external view returns (
+    function getPoolInfo(uint256 _pid) external view returns (
         address lpToken,         // Address of LP token contract.
         uint256 currentSupply,    //
         uint256 bonusStartBlock,  //
@@ -68,13 +68,14 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
 
     }
     
-    function _extFarmInfo(uint256 _pid) external view returns (
+    function getExtFarmInfo(uint256 _pid) external view returns (
 		address extFarmAddr,  
         bool extEnableDeposit,
         uint256 extPid,
         uint256 extRewardPerShare,
         uint256 extTotalDebtReward,
-        bool extEnableClaim){
+        bool extEnableClaim,
+        uint256 extAccPerShare){
 
         require(_pid < poolInfo.length,"pid >= poolInfo.length");
         PoolInfo storage pool = poolInfo[_pid];
@@ -85,7 +86,8 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
             pool.extFarmInfo.extPid,
             pool.extFarmInfo.extRewardPerShare,
             pool.extFarmInfo.extTotalDebtReward,
-            pool.extFarmInfo.extEnableClaim);
+            pool.extFarmInfo.extEnableClaim,
+            pool.extFarmInfo.extRewardPerShare);
 
     }
 

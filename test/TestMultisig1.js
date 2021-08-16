@@ -18,6 +18,21 @@ web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
  test case only for the ganahce command
  ganache-cli --port=7545 --gasLimit=8000000 --accounts=10 --defaultBalanceEther=100000 --blockTime 1
  **************************************************/
+async function createApplication(multiSign,account,to,value,message){
+  await multiSign.createApplication(to,value,message,{from:account});
+  return await multiSign.getApplicationHash(account,to,value,message)
+}
+
+async function testViolation(message,testFunc){
+  try {
+    await testFunc();
+    return true;
+  } catch (error) {
+    //console.log(error);
+    return false;
+  }
+}
+
 contract('MinePoolProxy', function (accounts){
   let rewardOneDay = web3.utils.toWei('5000', 'ether');
   let blockSeed = 5;
@@ -117,7 +132,7 @@ contract('MinePoolProxy', function (accounts){
 
     res = await phxfarmproxyinst.enableDoubleFarming(0,true,{from:operator1});
     assert.equal(res.receipt.status,true);
-    console.log("setting end")
+    console.log("setting end");
   })
 
   it("[0010] stake in,should pass", async()=>{
@@ -125,7 +140,6 @@ contract('MinePoolProxy', function (accounts){
     res = await lp.approve(phxfarmproxyinst.address,stakeAmount,{from:staker1});
     assert.equal(res.receipt.status,true);
     time.increaseTo(startTime+1);
-
 
     res = await phxfarmproxyinst.deposit(0,stakeAmount,{from:staker1});
     assert.equal(res.receipt.status,true);
@@ -147,86 +161,34 @@ contract('MinePoolProxy', function (accounts){
     console.log("start block time",block.timestamp);
 
   })
+//,emergencyWithdraw,quitPhxFarm,quitExtFarm
+  it("[0020] multisig for distributeFinalExtReward,should pass", async()=>{
 
-  it("[0020] check staker1 mined balance,should pass", async()=>{
-     time.increaseTo(startTime+2000);
-     let res = await phxfarmproxyinst.totalStaked(0);
-     console.log("totalstaked=" + res);
-
-    let block = await web3.eth.getBlock("latest");
-     console.log("blocknum1=" + block.number)
-
-    res = await phxfarmproxyinst.allPendingReward(0,staker1)
-    console.log("phxfarmproxyinst=",res[0].toString(),res[1].toString(),res[2].toString());
-
-    res = await phxfarmproxyinst.getPoolInfo(0)
-     console.log("poolinf=",res[0].toString(),res[1].toString(),res[2].toString(),
-     res[3].toString(),res[4].toString(),res[5].toString(),
-     res[6].toString(),res[7].toString(),res[8].toString());
-
-    res = await phxfarmproxyinst.getMineInfo(0);
-    console.log(res[0].toString(),
-                res[1].toString(),
-                res[2].toString(),
-                res[3].toString());
-
-     let preBalance = web3.utils.fromWei(await cphx.balanceOf(staker1));
-     let wasppreBalance = web3.utils.fromWei(await wasp.balanceOf(staker1));
-
-     res = await phxfarmproxyinst.withdraw(0,0,{from:staker1});
-     assert.equal(res.receipt.status,true);
-
-     let afterBalance = web3.utils.fromWei(await cphx.balanceOf(staker1))
-     console.log("cfnx reward=" + (afterBalance - preBalance));
-
-     let waspafterBalance = web3.utils.fromWei(await wasp.balanceOf(staker1));
-     console.log("wasp reward=" + (waspafterBalance - wasppreBalance));
-
-     let lppreBalance = web3.utils.fromWei(await lp.balanceOf(staker1))
-     res = await phxfarmproxyinst.withdraw(0,stakeAmount,{from:staker1});
-     assert.equal(res.receipt.status,true);
-     let lpafterBalance = web3.utils.fromWei(await lp.balanceOf(staker1))
-     console.log("lp balance=" + (lpafterBalance - lppreBalance));
-  })
-
-  it("[0020] check staker2 mined balance,should pass", async()=>{
-    let res = await phxfarmproxyinst.totalStaked(0);
-    console.log("totalstaked=" + res);
-
-    let block = await web3.eth.getBlock("latest");
-    console.log("blocknum1=" + block.number)
+    let preExtAcc = await phxfarmproxyinst._extFarmInfo()
 
     res = await phxfarmproxyinst.allPendingReward(0,staker2)
     console.log("phxfarmproxyinst=",res[0].toString(),res[1].toString(),res[2].toString());
+    let waspamount = res[2];
 
-    res = await phxfarmproxyinst.getPoolInfo(0)
-    console.log("poolinf=",res[0].toString(),res[1].toString(),res[2].toString(),
-      res[3].toString(),res[4].toString(),res[5].toString(),
-      res[6].toString(),res[7].toString(),res[8].toString());
+    let msgData = phxfarmproxyinst.contract.methods.distributeFinalExtReward(0,waspamount).encodeABI();
+    let hash = await createApplication(mulSigInst,accounts[9],phxfarmproxyinst.address,0,msgData);
+    let res = await testViolation("multiSig distributeFinalExtReward: This tx is not aprroved",async function(){
+      await phxfarmproxyinst.distributeFinalExtReward(0,waspamount,{from:operator0});
+    });
+    assert.equal(res,false,"should return false");
 
-    res = await phxfarmproxyinst.getMineInfo(0);
-    console.log(res[0].toString(),
-      res[1].toString(),
-      res[2].toString(),
-      res[3].toString());
+    let index = await mulSigInst.getApplicationCount(hash)
+    index = index.toNumber()-1;
+    console.log(index);
 
-    let preBalance = web3.utils.fromWei(await cphx.balanceOf(staker2));
-    let wasppreBalance = web3.utils.fromWei(await wasp.balanceOf(staker2));
+    await mulSigInst.signApplication(hash,index,{from:accounts[7]})
+    await mulSigInst.signApplication(hash,index,{from:accounts[8]})
 
-    res = await phxfarmproxyinst.withdraw(0,0,{from:staker2});
-    assert.equal(res.receipt.status,true);
+    res = await testViolation("multiSig distributeFinalExtReward: This tx is not aprroved",async function(){
+      await phxfarmproxyinst.distributeFinalExtReward(0,waspamount,{from:operator0});
+    });
+    assert.equal(res,true,"should return false");
 
-    let afterBalance = web3.utils.fromWei(await cphx.balanceOf(staker2))
-    console.log("cfnx reward=" + (afterBalance - preBalance));
-
-    let waspafterBalance = web3.utils.fromWei(await wasp.balanceOf(staker2));
-    console.log("wasp reward=" + (waspafterBalance - wasppreBalance));
-
-    let lppreBalance = web3.utils.fromWei(await lp.balanceOf(staker2))
-    res = await phxfarmproxyinst.withdraw(0,stakeAmount,{from:staker2});
-    assert.equal(res.receipt.status,true);
-    let lpafterBalance = web3.utils.fromWei(await lp.balanceOf(staker2))
-    console.log("lp balance=" + (lpafterBalance - lppreBalance));
   })
 
 })
