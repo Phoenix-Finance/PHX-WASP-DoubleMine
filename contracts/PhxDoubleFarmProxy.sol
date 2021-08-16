@@ -3,14 +3,15 @@ pragma solidity ^0.5.16;
 import "./PhxDoubleFarmStorage.sol";
 import "./proxy/ZiplinProxy.sol";
 
-contract TokenUnlockProxy is Proxy,PhxDoubleFarmV1Storage {
+contract PhxDoubleFarmProxy is Proxy,PhxDoubleFarmV1Storage {
 
     event Upgraded(address indexed implementation);
 
-    constructor(address _implAddress,address _multiSignature)
+    constructor(address _implAddress,address _rewardToken,address _multiSignature)
         multiSignatureClient(_multiSignature)
         public
     {
+        rewardToken = _rewardToken;
         _setImplementation(_implAddress);
     }
 

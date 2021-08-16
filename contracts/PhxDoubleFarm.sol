@@ -34,6 +34,13 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
+    constructor(address _multiSignature)
+        multiSignatureClient(_multiSignature)
+        public
+    {
+
+    }
+
     function _poolInfo(uint256 _pid) external view returns (
         address lpToken,         // Address of LP token contract.
         uint256 currentSupply,    //
@@ -460,7 +467,7 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
 
         PoolInfo storage pool = poolInfo[_pid];
         //to set start block number at init start
-        require(block.timestamp>pool.bonusStartTime);
+        require(block.timestamp>pool.bonusStartTime,"not reach start time for farming");
         if(pool.bonusStartBlock==0
            &&pool.newStartBlock==0
            &&pool.lastRewardBlock==0) {

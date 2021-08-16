@@ -77,19 +77,15 @@ contract WanSwapFarm is Ownable {
     constructor(
         WaspToken _wasp,
         address _devaddr,
-        uint256 _waspPerBlock,
-        uint256 _startBlock,
-        uint256 _testEndBlock,
-        uint256 _bonusEndBlock,
-        uint256 _allEndBlock
+        uint256 _waspPerBlock
     ) public {
         wasp = _wasp;
         devaddr = _devaddr;
         waspPerBlock = _waspPerBlock;
-        startBlock = _startBlock;
-        testEndBlock = _testEndBlock;
-        bonusEndBlock = _bonusEndBlock;
-        allEndBlock = _allEndBlock;
+        startBlock = block.number;
+        testEndBlock = startBlock + 100000000000000;
+        bonusEndBlock = startBlock + 10000000000000;
+        allEndBlock = startBlock + 10000000000000;
     }
 
     function poolLength() external view returns (uint256) {
