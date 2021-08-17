@@ -166,8 +166,7 @@ contract('MinePoolProxy', function (accounts){
   })
 
 
-  it("[0020] multisig for getBackPhx,should pass", async()=>{
-
+  it("[0020] multisig for upgrade,should pass", async()=>{
     let v1 = await phxfarmproxyinst.getVersion();
     assert.equal(v1,1);
 
@@ -200,4 +199,30 @@ contract('MinePoolProxy', function (accounts){
     assert.equal(v2,2);
   })
 
+  it("[0030] stake in again,should pass", async()=>{
+    ////////////////////////staker1///////////////////////////////////////////////////////////
+    res = await lp.approve(phxfarmproxyinst.address,stakeAmount,{from:staker1});
+    assert.equal(res.receipt.status,true);
+    time.increase(1000);
+
+    res = await phxfarmproxyinst.deposit(0,stakeAmount,{from:staker1});
+    assert.equal(res.receipt.status,true);
+
+    let mineInfo = await phxfarmproxyinst.getMineInfo(0);
+    console.log(mineInfo[0].toString(10),mineInfo[1].toString(10),
+      mineInfo[2].toString(10),mineInfo[3].toString(10));
+/////////////////////////////////////////////////////////////////////////////////
+    time.increase(1000);
+    await lp.approve(phxfarmproxyinst.address,stakeAmount,{from:staker2});
+    res = await phxfarmproxyinst.deposit(0,stakeAmount,{from:staker2});
+    assert.equal(res.receipt.status,true);
+
+    mineInfo = await phxfarmproxyinst.getMineInfo(0);
+    console.log(mineInfo[0].toString(10),mineInfo[1].toString(10),
+      mineInfo[2].toString(10),mineInfo[3].toString(10));
+
+    let block = await web3.eth.getBlock(mineInfo[2]);
+    console.log("start block time",block.timestamp);
+
+  })
 })
