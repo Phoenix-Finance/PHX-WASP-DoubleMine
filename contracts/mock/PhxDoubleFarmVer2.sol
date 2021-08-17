@@ -1,8 +1,8 @@
 pragma solidity 0.5.16;
-import "./PhxDoubleFarmStorage.sol";
-import "./IERC20.sol";
-import "./SafeMath.sol";
-import "./SafeERC20.sol";
+import "../PhxDoubleFarmStorage.sol";
+import "../IERC20.sol";
+import "../SafeMath.sol";
+import "../SafeERC20.sol";
 
 interface IChef {
     function deposit(uint256 _pid, uint256 _amount) external;
@@ -18,7 +18,7 @@ interface IChef {
     function withdraw(uint256 _pid, uint256 _amount) external;
 }
 
-contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
+contract PhxDoubleFarmVer2 is PhxDoubleFarmV1Storage {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -635,7 +635,7 @@ contract PhxDoubleFarm is PhxDoubleFarmV1Storage {
     }
 
     function getVersion() public view returns (uint256) {
-        return 1;
+        return 2;
     }
 
 

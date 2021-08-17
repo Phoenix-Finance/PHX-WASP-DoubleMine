@@ -189,7 +189,7 @@ contract('MinePoolProxy', function (accounts){
     assert.equal(res.receipt.status,true);
 
     await utils.pause(web3,endBlock+10);
-    res = await testViolation("multiSig quitExtFarm: This tx is not aprroved",async function(){
+    res = await testViolation("multiSig quitPhxFarm: This tx is not aprroved",async function(){
       await phxfarmproxyinst.quitPhxFarm(accounts[3],{from:operator0});
     });
     assert.equal(res,true,"should return false");

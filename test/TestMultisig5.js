@@ -162,18 +162,19 @@ contract('MinePoolProxy', function (accounts){
 
   })
 
-//quitPhxFarm,quitExtFarm
-  it("[0020] multisig for quitExtFarm,should pass", async()=>{
+
+  it("[0020] multisig for getBackPhx,should pass", async()=>{
     time.increaseTo(startTime+3000);
+    let preBal = await cphx.balanceOf(accounts[3]);
 
     let res = await phxfarmproxyinst.allPendingReward(0,staker2)
     console.log("phxfarmproxyinst=",res[0].toString(),res[1].toString(),res[2].toString());
 
-    let msgData = phxfarmproxyinst.contract.methods.quitExtFarm(wanfarminst.address,accounts[3]).encodeABI();
+    let msgData = phxfarmproxyinst.contract.methods.getBackPhx(accounts[3]).encodeABI();
     let hash = await createApplication(mulSiginst,accounts[9],phxfarmproxyinst.address,0,msgData);
 
-    res = await testViolation("multiSig quitExtFarm: This tx is not aprroved",async function(){
-      await phxfarmproxyinst.quitExtFarm(wanfarminst.address,accounts[3],{from:operator0});
+    res = await testViolation("multiSig getBackPhx: This tx is not aprroved",async function(){
+      await phxfarmproxyinst.getBackPhx(accounts[3],{from:operator0});
     });
     assert.equal(res,false,"should return false");
 
@@ -187,13 +188,13 @@ contract('MinePoolProxy', function (accounts){
     assert.equal(res.receipt.status,true);
 
 
-    res = await testViolation("multiSig quitExtFarm: This tx is not aprroved",async function(){
-       await phxfarmproxyinst.quitExtFarm(wanfarminst.address,accounts[3],{from:operator0});
+    res = await testViolation("multiSig getBackPhx: This tx is not aprroved",async function(){
+       await phxfarmproxyinst.getBackPhx(accounts[3],{from:operator0});
     });
     assert.equal(res,true,"should return false");
 
-    res = await wasp.balanceOf(accounts[3]);
-    console.log("after balance",res.toString(10));
+    let afterBal = await cphx.balanceOf(accounts[3]);
+    console.log("prebalance",preBal,"after balance",afterBal);
   })
 
 })
