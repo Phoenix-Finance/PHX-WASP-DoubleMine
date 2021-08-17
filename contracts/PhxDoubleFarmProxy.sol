@@ -21,7 +21,7 @@ contract PhxDoubleFarmProxy is Proxy,PhxDoubleFarmV1Storage {
      * This is the keccak-256 hash of "org.zeppelinos.proxy.implementation", and is
      * validated in the constructor.
      */
-    bytes32 internal constant IMPLEMENTATION_SLOT = keccak256("org.Phoenix.implementation.unlocksc");
+    bytes32 internal constant IMPLEMENTATION_SLOT = keccak256("org.phoenix.implementation.doublefarm");
 
     function proxyType() public pure returns (uint256){
         return 2;
