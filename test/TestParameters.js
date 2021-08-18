@@ -14,6 +14,19 @@ const BN = require("bn.js");
 var utils = require('./utils.js');
 web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 
+
+
+let minutes = 60;
+let hour    = 60*60;
+let day     = 24*hour;
+let secperblock = 5;
+let blocksperday = day/5;
+
+let farmAmountPerday = web3.utils.toWei("3000","ether");
+let rewardperblock = new BN(farmAmountPerday.toString(10)).div(new BN(blocksperday));
+let endblock = 16188995 + blocksperday*365*3;
+console.log(rewardperblock.toString(10),endblock);
+return
 /**************************************************
  test case only for the ganahce command
  ganache-cli --port=7545 --gasLimit=8000000 --accounts=10 --defaultBalanceEther=100000 --blockTime 1
@@ -148,7 +161,6 @@ contract('MinePoolProxy', function (accounts){
 
   })
 
-
   it("[0020] check staker1 mined balance,should pass", async()=>{
      time.increaseTo(startTime+2000);
      let res = await phxfarmproxyinst.totalStaked(0);
@@ -190,7 +202,7 @@ contract('MinePoolProxy', function (accounts){
      console.log("lp balance=" + (lpafterBalance - lppreBalance));
   })
 
-  it("[0030] check staker2 mined balance,should pass", async()=>{
+  it("[0020] check staker2 mined balance,should pass", async()=>{
     let res = await phxfarmproxyinst.totalStaked(0);
     console.log("totalstaked=" + res);
 

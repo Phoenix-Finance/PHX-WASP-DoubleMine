@@ -634,7 +634,7 @@ contract PhxDoubleFarmVer2 is PhxDoubleFarmV1Storage {
            poolInfo[_pid].bonusStartBlock,poolInfo[_pid].rewardPerBlock);
     }
 
-    function getVersion() public view returns (uint256) {
+    function getVersion() public pure returns (uint256) {
         return 2;
     }
 
